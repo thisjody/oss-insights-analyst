@@ -9,3 +9,6 @@ __pycache__/
 .idea/
 .DS_Store
 secrets/.env
+terraform/terraform.tfvars
+terraform/terraform.auto.tfvars
+
