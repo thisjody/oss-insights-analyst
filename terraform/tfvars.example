@@ -1,0 +1,4 @@
+project_id        = "your-gcp-project-id"
+region            = "your-region"
+app_engine_region = "your-app-engine-region"
+secret_region     = "your-secret-region"
