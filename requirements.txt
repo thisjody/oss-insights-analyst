@@ -1,0 +1,7 @@
+google-cloud-firestore
+google-cloud-secret-manager
+openai
+tiktoken
+pre-commit
+black
+isort
