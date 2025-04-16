@@ -1,25 +1,31 @@
 #!/bin/bash
 
+set -euo pipefail
+
 echo "🔁 Rebuilding secrets/.env from prompts/*.md"
 
-mkdir -p secrets
 output="secrets/.env"
+mkdir -p secrets
 
-# Preserve existing API key if present
-if [ -f "$output" ]; then
-  api_key=$(grep '^GEMINI_API_KEY=' "$output")
-else
-  api_key="GEMINI_API_KEY="
+# === Ensure API key line is preserved or inserted ===
+api_key_line="GEMINI_API_KEY="
+if [[ -f "$output" ]]; then
+  existing=$(grep '^GEMINI_API_KEY=' "$output" || true)
+  if [[ -n "$existing" ]]; then
+    api_key_line="$existing"
+  fi
 fi
 
-echo "$api_key" > "$output"
+# === Write the key line first ===
+echo "$api_key_line" > "$output"
+echo >> "$output"
 
+# === Convert prompt files to escaped .env entries ===
 for f in prompts/*.md; do
-  key=$(basename "$f" .md | tr '[:lower:]' '[:upper:]' | tr '-' '_' )
-  value=$(awk '{printf "%s\\n", $0}' "$f" | sed 's/"/\\"/g')
-  echo "${key}_PROMPT=\"$value\"" >> "$output"
+  var=$(basename "$f" .md | tr '[:lower:]' '[:upper:]' | tr '-' '_' )
+  value=$(sed ':a;N;$!ba;s/"/\\"/g;s/\n/\\n/g' "$f")
+  echo "${var}_PROMPT=\"$value\"" >> "$output"
   echo >> "$output"
 done
 
-echo "✅ Rebuilt secrets/.env (preserved API key)"
-
+echo "✅ Rebuilt secrets/.env (preserved or initialized GEMINI_API_KEY)"
