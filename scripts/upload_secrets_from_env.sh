@@ -2,43 +2,61 @@
 
 set -e
 
-PROJECT_ID=$(gcloud config get-value project 2>/dev/null)
-ENV_FILE="secrets/.env"
+echo "🚀 Uploading secrets from secrets/.env to GCP project: oss-insights-analyst"
 
-if [ ! -f "$ENV_FILE" ]; then
-  echo "❌ .env file not found at $ENV_FILE"
+ENV_FILE="secrets/.env"
+PROJECT_ID="oss-insights-analyst"
+
+if [[ ! -f "$ENV_FILE" ]]; then
+  echo "❌ Missing $ENV_FILE"
   exit 1
 fi
 
-echo "🚀 Uploading secrets from $ENV_FILE to GCP project: $PROJECT_ID"
+# Load GEMINI_API_KEY normally
+GEMINI_API_KEY=$(grep '^GEMINI_API_KEY=' "$ENV_FILE" | cut -d '=' -f2-)
 
-# Read key-value pairs from .env
-while IFS='=' read -r key value || [[ -n "$key" ]]; do
-  # Skip empty lines and comments
-  [[ -z "$key" || "$key" =~ ^# ]] && continue
+# Load all prompts from the .env
+declare -A secrets
 
-  # Strip quotes
-  value="${value%\"}"
-  value="${value#\"}"
+while IFS='=' read -r key value; do
+  if [[ "$key" == *_PROMPT ]]; then
+    # Join multiline prompt strings
+    buffer="$value"
+    while [[ "$buffer" != *\" ]]; do
+      read -r continuation
+      buffer+=$'\n'"$continuation"
+    done
+    # Remove surrounding quotes
+    clean_value=$(echo "$buffer" | sed '1s/^"//' | sed '$s/"$//')
+    secrets["$key"]="$clean_value"
+  fi
+done < <(grep -E '^[A-Z_]+_PROMPT=' "$ENV_FILE")
 
-  # Determine secret name
-  secret_name=$(echo "$key" | tr '[:upper:]' '[:lower:]')
+# Add the API key explicitly
+secrets["gemini_api_key"]="$GEMINI_API_KEY"
 
-  echo "🔐 Uploading $secret_name..."
+# Upload to GCP
+for key in "${!secrets[@]}"; do
+  value="${secrets[$key]}"
+  if [[ -z "$value" ]]; then
+    echo "⚠️  Skipping empty secret: $key"
+    continue
+  fi
 
-  # Create secret if it doesn't exist
-  if ! gcloud secrets describe "$secret_name" --project "$PROJECT_ID" &>/dev/null; then
-    gcloud secrets create "$secret_name" \
+  echo "🔐 Uploading $key..."
+
+  # Create the secret if it doesn’t exist
+  if ! gcloud secrets describe "$key" --project="$PROJECT_ID" &>/dev/null; then
+    gcloud secrets create "$key" \
       --replication-policy="user-managed" \
       --locations="us-central1" \
       --project="$PROJECT_ID"
   fi
 
-  # Add a new version
-  echo -n "$value" | gcloud secrets versions add "$secret_name" \
+  # Upload the new secret version
+  echo -n "$value" | gcloud secrets versions add "$key" \
     --data-file=- \
     --project="$PROJECT_ID"
-done < "$ENV_FILE"
+done
 
 echo "✅ All secrets uploaded."
-
