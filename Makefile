@@ -63,3 +63,6 @@ init-cf:
 
 deploy-vc-strategist:
 	bash scripts/deploy_cf.sh agents/vc_strategist/.env.deploy
+
+deploy-tech-architect:
+	bash scripts/deploy_cf.sh agents/tech_architect/.env.deploy
