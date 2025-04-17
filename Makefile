@@ -72,3 +72,6 @@ deploy-trend-watcher:
 
 deploy-oss-purist:
 	bash scripts/deploy_cf.sh agents/oss_purist/.env.deploy
+
+deploy-trend-watcher:
+	bash scripts/deploy_cf.sh agents/trend_watcher/.env.deploy
