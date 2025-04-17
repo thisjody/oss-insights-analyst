@@ -66,3 +66,9 @@ deploy-vc-strategist:
 
 deploy-tech-architect:
 	bash scripts/deploy_cf.sh agents/tech_architect/.env.deploy
+
+deploy-trend-watcher:
+	bash scripts/deploy_cf.sh agents/trend_watcher/.env.deploy
+
+deploy-oss-purist:
+	bash scripts/deploy_cf.sh agents/oss_purist/.env.deploy
